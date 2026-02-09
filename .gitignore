@@ -23,4 +23,9 @@ Thumbs.db
 # Build outputs
 dist/
 build/
+.next/
 *.log
+
+# Amplify
+amplify_outputs.json
+.amplify/
