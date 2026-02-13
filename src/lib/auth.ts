@@ -3,8 +3,9 @@ import Google from "next-auth/providers/google";
 import { DynamoDB } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocument } from "@aws-sdk/lib-dynamodb";
 import { DynamoDBAdapter } from "@auth/dynamodb-adapter";
+import { getNextAuthTableName } from "./env";
 
-const tableName = process.env.NEXTAUTH_TABLE_NAME ?? "";
+const tableName = getNextAuthTableName();
 
 /** JWT session lifetime: 1 hour. Sliding window via client update() refreshes the token. */
 const JWT_SESSION_MAX_AGE_SEC = 60 * 60;

@@ -9,9 +9,13 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { getAllCellIndices, getCellDisplay, getCellDollarAmount } from "./board";
+import { getFundraiserTableName } from "./env";
 
 const client = new DynamoDBClient({});
-const TableName = process.env.FUNDRAISER_TABLE_NAME ?? "";
+
+function getTableName(): string {
+  return getFundraiserTableName();
+}
 
 // --- Types matching single-table design ---
 
@@ -75,10 +79,10 @@ function skSquare(cellIndex: number) {
 // --- User profile ---
 
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
-  if (!TableName) return null;
+  if (!getTableName()) return null;
   const res = await client.send(
     new GetItemCommand({
-      TableName,
+      TableName: getTableName(),
       Key: marshall({ PK: pkUser(userId), SK: "PROFILE" }),
     })
   );
@@ -87,22 +91,22 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
 }
 
 export async function putUserProfile(profile: Omit<UserProfile, "PK" | "SK"> & { userId: string }): Promise<void> {
-  if (!TableName) return;
+  if (!getTableName()) return;
   const item: UserProfile = {
     PK: pkUser(profile.userId),
     SK: "PROFILE",
     ...profile,
   };
-  await client.send(new PutItemCommand({ TableName, Item: marshall(item) }));
+  await client.send(new PutItemCommand({ TableName: getTableName(), Item: marshall(item) }));
 }
 
 // --- Fundraiser ---
 
 export async function getFundraiserById(id: string): Promise<FundraiserMeta | null> {
-  if (!TableName) return null;
+  if (!getTableName()) return null;
   const res = await client.send(
     new GetItemCommand({
-      TableName,
+      TableName: getTableName(),
       Key: marshall({ PK: pkFundraiser(id), SK: "META" }),
     })
   );
@@ -129,10 +133,10 @@ export async function getFundraiserWithSquaresBySlug(slug: string): Promise<Fund
 }
 
 export async function listFundraisersByUser(userId: string): Promise<FundraiserMeta[]> {
-  if (!TableName) return [];
+  if (!getTableName()) return [];
   const res = await client.send(
     new QueryCommand({
-      TableName,
+      TableName: getTableName(),
       IndexName: "GSI1",
       KeyConditionExpression: "GSI1PK = :pk AND begins_with(GSI1SK, :sk)",
       ExpressionAttributeValues: marshall({ ":pk": pkUser(userId), ":sk": "FUNDRAISER#" }),
@@ -143,10 +147,10 @@ export async function listFundraisersByUser(userId: string): Promise<FundraiserM
 }
 
 async function getFundraiserBySlugFromDb(slug: string): Promise<FundraiserMeta | null> {
-  if (!TableName) return null;
+  if (!getTableName()) return null;
   const res = await client.send(
     new ScanCommand({
-      TableName,
+      TableName: getTableName(),
       FilterExpression: "SK = :sk AND #slug = :slug",
       ExpressionAttributeNames: { "#slug": "slug" },
       ExpressionAttributeValues: marshall({ ":sk": "META", ":slug": slug }),
@@ -159,10 +163,10 @@ async function getFundraiserBySlugFromDb(slug: string): Promise<FundraiserMeta |
 // --- Squares ---
 
 export async function getSquaresForFundraiser(fundraiserId: string): Promise<SquareRecord[]> {
-  if (!TableName) return [];
+  if (!getTableName()) return [];
   const res = await client.send(
     new QueryCommand({
-      TableName,
+      TableName: getTableName(),
       KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
       ExpressionAttributeValues: marshall({ ":pk": pkFundraiser(fundraiserId), ":sk": "SQUARE#" }),
     })
@@ -183,7 +187,7 @@ export interface CreateFundraiserInput {
 }
 
 export async function createFundraiser(input: CreateFundraiserInput): Promise<FundraiserMeta> {
-  if (!TableName) throw new Error("FUNDRAISER_TABLE_NAME not set");
+  if (!getTableName()) throw new Error("FUNDRAISER_TABLE_NAME not set");
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
   const meta: FundraiserMeta = {
@@ -202,7 +206,7 @@ export async function createFundraiser(input: CreateFundraiserInput): Promise<Fu
     GSI1PK: pkUser(input.userId),
     GSI1SK: pkFundraiser(id),
   };
-  await client.send(new PutItemCommand({ TableName, Item: marshall(meta) }));
+  await client.send(new PutItemCommand({ TableName: getTableName(), Item: marshall(meta) }));
 
   const indices = getAllCellIndices();
   const putRequests = indices.map((cellIndex) => ({
@@ -221,7 +225,7 @@ export async function createFundraiser(input: CreateFundraiserInput): Promise<Fu
     const chunk = putRequests.slice(i, i + 25);
     await client.send(
       new BatchWriteItemCommand({
-        RequestItems: { [TableName]: chunk },
+        RequestItems: { [getTableName()]: chunk },
       })
     );
   }
@@ -233,11 +237,11 @@ export async function claimSquare(
   cellIndex: number,
   donorName: string
 ): Promise<SquareRecord | null> {
-  if (!TableName) return null;
+  if (!getTableName()) return null;
   const key = marshall({ PK: pkFundraiser(fundraiserId), SK: skSquare(cellIndex) });
   const res = await client.send(
     new UpdateItemCommand({
-      TableName,
+      TableName: getTableName(),
       Key: key,
       ConditionExpression: "#status = :available",
       UpdateExpression: "SET #status = :pending, donorName = :name",
@@ -250,11 +254,11 @@ export async function claimSquare(
 }
 
 export async function confirmSquare(fundraiserId: string, cellIndex: number): Promise<SquareRecord | null> {
-  if (!TableName) return null;
+  if (!getTableName()) return null;
   const now = new Date().toISOString();
   const res = await client.send(
     new UpdateItemCommand({
-      TableName,
+      TableName: getTableName(),
       Key: marshall({ PK: pkFundraiser(fundraiserId), SK: skSquare(cellIndex) }),
       ConditionExpression: "#status = :pending",
       UpdateExpression: "SET #status = :claimed, claimedAt = :now",
@@ -267,10 +271,10 @@ export async function confirmSquare(fundraiserId: string, cellIndex: number): Pr
 }
 
 export async function releaseSquare(fundraiserId: string, cellIndex: number): Promise<SquareRecord | null> {
-  if (!TableName) return null;
+  if (!getTableName()) return null;
   const res = await client.send(
     new UpdateItemCommand({
-      TableName,
+      TableName: getTableName(),
       Key: marshall({ PK: pkFundraiser(fundraiserId), SK: skSquare(cellIndex) }),
       ConditionExpression: "#status = :pending",
       UpdateExpression: "SET #status = :available REMOVE donorName",
@@ -283,10 +287,10 @@ export async function releaseSquare(fundraiserId: string, cellIndex: number): Pr
 }
 
 export async function updateFundraiserPhoto(fundraiserId: string, dancerPhotoS3Key: string): Promise<void> {
-  if (!TableName) return;
+  if (!getTableName()) return;
   await client.send(
     new UpdateItemCommand({
-      TableName,
+      TableName: getTableName(),
       Key: marshall({ PK: pkFundraiser(fundraiserId), SK: "META" }),
       UpdateExpression: "SET dancerPhotoS3Key = :key",
       ExpressionAttributeValues: marshall({ ":key": dancerPhotoS3Key }),

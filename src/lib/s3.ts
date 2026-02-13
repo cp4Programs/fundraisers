@@ -1,8 +1,12 @@
 import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { getAssetsBucketName } from "./env";
 
 const client = new S3Client({});
-const Bucket = process.env.FUNDRAISER_ASSETS_BUCKET ?? "";
+
+function getBucket(): string {
+  return getAssetsBucketName();
+}
 
 const PRESIGN_UPLOAD_EXPIRES = 60 * 15; // 15 min
 const PRESIGN_READ_EXPIRES = 60 * 60; // 1 hour
@@ -12,9 +16,9 @@ const PRESIGN_READ_EXPIRES = 60 * 60; // 1 hour
  * Key format: fundraisers/{fundraiserId}/dancer.{ext}
  */
 export async function getUploadPresignedUrl(key: string, contentType: string): Promise<string | null> {
-  if (!Bucket) return null;
+  if (!getBucket()) return null;
   const command = new PutObjectCommand({
-    Bucket,
+    Bucket: getBucket(),
     Key: key,
     ContentType: contentType,
   });
@@ -25,8 +29,8 @@ export async function getUploadPresignedUrl(key: string, contentType: string): P
  * Generate a presigned URL for reading an object (GET).
  */
 export async function getReadPresignedUrl(key: string): Promise<string | null> {
-  if (!Bucket) return null;
-  const command = new GetObjectCommand({ Bucket, Key: key });
+  if (!getBucket()) return null;
+  const command = new GetObjectCommand({ Bucket: getBucket(), Key: key });
   return getSignedUrl(client, command, { expiresIn: PRESIGN_READ_EXPIRES });
 }
 

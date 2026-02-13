@@ -80,4 +80,17 @@ new CfnOutput(storageStack, "AssetsBucketName", {
   exportName: "FundraiserAssetsBucketName",
 });
 
+/**
+ * Expose resource names to amplify_outputs.json so the Next.js app can use them
+ * when env vars are not set (e.g. after `npx ampx sandbox`).
+ */
+backend.addOutput({
+  version: "1.4",
+  custom: {
+    FundraiserTableName: fundraiserTable.tableName,
+    NextAuthTableName: nextAuthTable.tableName,
+    AssetsBucketName: assetsBucket.bucketName,
+  },
+});
+
 export default backend;

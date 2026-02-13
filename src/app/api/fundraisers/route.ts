@@ -1,12 +1,13 @@
 import { auth } from "@/lib/auth";
 import { createFundraiser, listFundraisersByUser, type CreateFundraiserInput } from "@/lib/db";
+import { getFundraiserTableName } from "@/lib/env";
 import { NextResponse } from "next/server";
 
 function fundraisersNotConfigured() {
   return NextResponse.json(
     {
       error:
-        "Fundraisers are not configured. Set FUNDRAISER_TABLE_NAME (e.g. run `npx ampx sandbox` and add the table name to .env.local).",
+        "Fundraisers are not configured. Run `npx ampx sandbox`, then `node scripts/load-amplify-outputs.js`, and restart the app.",
     },
     { status: 503 }
   );
@@ -17,7 +18,7 @@ export async function GET() {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!process.env.FUNDRAISER_TABLE_NAME?.trim()) {
+  if (!getFundraiserTableName()) {
     return fundraisersNotConfigured();
   }
   const list = await listFundraisersByUser(session.user.id);
@@ -29,7 +30,7 @@ export async function POST(req: Request) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!process.env.FUNDRAISER_TABLE_NAME?.trim()) {
+  if (!getFundraiserTableName()) {
     return fundraisersNotConfigured();
   }
   const body = (await req.json()) as Partial<CreateFundraiserInput>;
