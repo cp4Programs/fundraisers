@@ -1,4 +1,4 @@
-# And Dance Fundraiser
+# Fundraisers
 
 Web app for dance fundraisers: creators set up a “pick a square” board (5×8 grid); donors claim a square (number = dollar amount, star = custom amount) and pay via Venmo or Zelle. Creators confirm payments and share the board to social media.
 

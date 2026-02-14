@@ -15,7 +15,7 @@ export default async function DashboardLayout({
     <div className="min-h-screen bg-purple-50">
       <header className="border-b border-purple-200 bg-white px-6 py-4 flex items-center justify-between">
         <Link href="/dashboard" className="text-xl font-bold text-purple-900">
-          And Dance Fundraiser
+          Fundraisers
         </Link>
         <div className="flex items-center gap-4">
           <span className="text-sm text-purple-700">{session.user.email ?? session.user.name}</span>

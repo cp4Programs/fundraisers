@@ -3,7 +3,7 @@ import { Providers } from "@/components/Providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "And Dance Fundraiser",
+  title: "Fundraisers",
   description: "Support dance competition season — pick a square, make a donation",
 };
 

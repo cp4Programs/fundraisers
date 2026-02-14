@@ -4,7 +4,7 @@ export default function HomePage() {
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-8 bg-gradient-to-b from-purple-100 to-purple-200">
       <h1 className="text-3xl font-bold text-purple-900 mb-4">
-        And Dance Fundraiser
+        Fundraisers
       </h1>
       <p className="text-purple-800 mb-8 text-center max-w-md">
         Support dance competition season. Pick a square, make a donation.

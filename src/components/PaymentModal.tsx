@@ -71,7 +71,7 @@ export function PaymentModal({
   }
 
   const payAmount = amount ?? 0;
-  const note = `And Dance Square ${isStar ? "⭐" : displayValue}`;
+  const note = `Fundraisers Square ${isStar ? "⭐" : displayValue}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
