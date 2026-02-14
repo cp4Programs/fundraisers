@@ -1,14 +1,14 @@
 /**
  * Fixed 5 rows x 8 columns = 40 cells.
  * 35 numbered squares ($1-$35), 5 star squares (custom amount) on diagonal.
- * Star positions: (0,1), (1,2), (2,3), (3,4), (4,5) in row,col 0-based.
+ * Star positions: (0,1), (1,2), (2,3), (3,4), (4,5) in row,col 0-based (diagonal).
  */
 export const ROWS = 5;
 export const COLS = 8;
 export const TOTAL_CELLS = ROWS * COLS; // 40
 
 /** 0-based cell index -> display value: number 1-35 or "star" */
-const STAR_INDEXES = new Set([1, 10, 18, 26, 34]); // cell indices that are stars (0-based)
+const STAR_INDEXES = new Set([1, 10, 19, 28, 37]); // cell indices that are stars (0-based, diagonal)
 
 export type CellDisplay = number | "star";
 

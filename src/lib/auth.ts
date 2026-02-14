@@ -68,9 +68,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       return token;
     },
-    async session({ session, token }) {
+    async session({ session, token, user }) {
       if (session.user) {
-        const id = typeof token.sub === "string" ? token.sub : typeof token.id === "string" ? token.id : "";
+        // database strategy passes `user`, JWT strategy passes `token`
+        const id = user?.id ?? token?.sub ?? token?.id ?? "";
         session.user.id = id;
       }
       return session;

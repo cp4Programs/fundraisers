@@ -12,6 +12,7 @@ import { getAllCellIndices, getCellDisplay, getCellDollarAmount } from "./board"
 import { getFundraiserTableName } from "./env";
 
 const client = new DynamoDBClient({});
+const marshallOpts = { removeUndefinedValues: true };
 
 function getTableName(): string {
   return getFundraiserTableName();
@@ -83,7 +84,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
   const res = await client.send(
     new GetItemCommand({
       TableName: getTableName(),
-      Key: marshall({ PK: pkUser(userId), SK: "PROFILE" }),
+      Key: marshall({ PK: pkUser(userId), SK: "PROFILE" }, marshallOpts),
     })
   );
   if (!res.Item) return null;
@@ -97,7 +98,7 @@ export async function putUserProfile(profile: Omit<UserProfile, "PK" | "SK"> & {
     SK: "PROFILE",
     ...profile,
   };
-  await client.send(new PutItemCommand({ TableName: getTableName(), Item: marshall(item) }));
+  await client.send(new PutItemCommand({ TableName: getTableName(), Item: marshall(item, marshallOpts) }));
 }
 
 // --- Fundraiser ---
@@ -107,7 +108,7 @@ export async function getFundraiserById(id: string): Promise<FundraiserMeta | nu
   const res = await client.send(
     new GetItemCommand({
       TableName: getTableName(),
-      Key: marshall({ PK: pkFundraiser(id), SK: "META" }),
+      Key: marshall({ PK: pkFundraiser(id), SK: "META" }, marshallOpts),
     })
   );
   if (!res.Item) return null;
@@ -139,7 +140,7 @@ export async function listFundraisersByUser(userId: string): Promise<FundraiserM
       TableName: getTableName(),
       IndexName: "GSI1",
       KeyConditionExpression: "GSI1PK = :pk AND begins_with(GSI1SK, :sk)",
-      ExpressionAttributeValues: marshall({ ":pk": pkUser(userId), ":sk": "FUNDRAISER#" }),
+      ExpressionAttributeValues: marshall({ ":pk": pkUser(userId), ":sk": "FUNDRAISER#" }, marshallOpts),
     })
   );
   const items = (res.Items ?? []).map((i) => unmarshall(i) as FundraiserMeta);
@@ -153,7 +154,7 @@ async function getFundraiserBySlugFromDb(slug: string): Promise<FundraiserMeta |
       TableName: getTableName(),
       FilterExpression: "SK = :sk AND #slug = :slug",
       ExpressionAttributeNames: { "#slug": "slug" },
-      ExpressionAttributeValues: marshall({ ":sk": "META", ":slug": slug }),
+      ExpressionAttributeValues: marshall({ ":sk": "META", ":slug": slug }, marshallOpts),
     })
   );
   const items = (res.Items ?? []).map((i) => unmarshall(i) as FundraiserMeta);
@@ -168,7 +169,7 @@ export async function getSquaresForFundraiser(fundraiserId: string): Promise<Squ
     new QueryCommand({
       TableName: getTableName(),
       KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
-      ExpressionAttributeValues: marshall({ ":pk": pkFundraiser(fundraiserId), ":sk": "SQUARE#" }),
+      ExpressionAttributeValues: marshall({ ":pk": pkFundraiser(fundraiserId), ":sk": "SQUARE#" }, marshallOpts),
     })
   );
   const items = (res.Items ?? []).map((i) => unmarshall(i) as SquareRecord);
@@ -206,7 +207,7 @@ export async function createFundraiser(input: CreateFundraiserInput): Promise<Fu
     GSI1PK: pkUser(input.userId),
     GSI1SK: pkFundraiser(id),
   };
-  await client.send(new PutItemCommand({ TableName: getTableName(), Item: marshall(meta) }));
+  await client.send(new PutItemCommand({ TableName: getTableName(), Item: marshall(meta, marshallOpts) }));
 
   const indices = getAllCellIndices();
   const putRequests = indices.map((cellIndex) => ({
@@ -218,7 +219,7 @@ export async function createFundraiser(input: CreateFundraiserInput): Promise<Fu
         displayValue: getCellDisplay(cellIndex),
         dollarAmount: getCellDollarAmount(cellIndex),
         status: "available" as SquareStatus,
-      }),
+      }, marshallOpts),
     },
   }));
   for (let i = 0; i < putRequests.length; i += 25) {
@@ -238,7 +239,7 @@ export async function claimSquare(
   donorName: string
 ): Promise<SquareRecord | null> {
   if (!getTableName()) return null;
-  const key = marshall({ PK: pkFundraiser(fundraiserId), SK: skSquare(cellIndex) });
+  const key = marshall({ PK: pkFundraiser(fundraiserId), SK: skSquare(cellIndex) }, marshallOpts);
   const res = await client.send(
     new UpdateItemCommand({
       TableName: getTableName(),
@@ -246,7 +247,7 @@ export async function claimSquare(
       ConditionExpression: "#status = :available",
       UpdateExpression: "SET #status = :pending, donorName = :name",
       ExpressionAttributeNames: { "#status": "status" },
-      ExpressionAttributeValues: marshall({ ":available": "available", ":pending": "pending", ":name": donorName }),
+      ExpressionAttributeValues: marshall({ ":available": "available", ":pending": "pending", ":name": donorName }, marshallOpts),
       ReturnValues: "ALL_NEW",
     })
   );
@@ -259,11 +260,11 @@ export async function confirmSquare(fundraiserId: string, cellIndex: number): Pr
   const res = await client.send(
     new UpdateItemCommand({
       TableName: getTableName(),
-      Key: marshall({ PK: pkFundraiser(fundraiserId), SK: skSquare(cellIndex) }),
+      Key: marshall({ PK: pkFundraiser(fundraiserId), SK: skSquare(cellIndex) }, marshallOpts),
       ConditionExpression: "#status = :pending",
       UpdateExpression: "SET #status = :claimed, claimedAt = :now",
       ExpressionAttributeNames: { "#status": "status" },
-      ExpressionAttributeValues: marshall({ ":pending": "pending", ":claimed": "claimed", ":now": now }),
+      ExpressionAttributeValues: marshall({ ":pending": "pending", ":claimed": "claimed", ":now": now }, marshallOpts),
       ReturnValues: "ALL_NEW",
     })
   );
@@ -275,11 +276,11 @@ export async function releaseSquare(fundraiserId: string, cellIndex: number): Pr
   const res = await client.send(
     new UpdateItemCommand({
       TableName: getTableName(),
-      Key: marshall({ PK: pkFundraiser(fundraiserId), SK: skSquare(cellIndex) }),
+      Key: marshall({ PK: pkFundraiser(fundraiserId), SK: skSquare(cellIndex) }, marshallOpts),
       ConditionExpression: "#status = :pending",
       UpdateExpression: "SET #status = :available REMOVE donorName",
       ExpressionAttributeNames: { "#status": "status" },
-      ExpressionAttributeValues: marshall({ ":pending": "pending", ":available": "available" }),
+      ExpressionAttributeValues: marshall({ ":pending": "pending", ":available": "available" }, marshallOpts),
       ReturnValues: "ALL_NEW",
     })
   );
@@ -291,9 +292,9 @@ export async function updateFundraiserPhoto(fundraiserId: string, dancerPhotoS3K
   await client.send(
     new UpdateItemCommand({
       TableName: getTableName(),
-      Key: marshall({ PK: pkFundraiser(fundraiserId), SK: "META" }),
+      Key: marshall({ PK: pkFundraiser(fundraiserId), SK: "META" }, marshallOpts),
       UpdateExpression: "SET dancerPhotoS3Key = :key",
-      ExpressionAttributeValues: marshall({ ":key": dancerPhotoS3Key }),
+      ExpressionAttributeValues: marshall({ ":key": dancerPhotoS3Key }, marshallOpts),
     })
   );
 }
